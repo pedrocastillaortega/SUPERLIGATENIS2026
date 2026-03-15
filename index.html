@@ -301,7 +301,7 @@ select option{background:#fff}
 // =====================================================
 //  PEGA AQUI TU URL DE APPS SCRIPT
 // =====================================================
-https://script.google.com/macros/s/AKfycbyfIdDlr27nfQjXo0ndpwhwkb2j-W0Rv-_aE0Vr6ivdE_BQwbtI4bpbLEyU6vlSYd5I/exec
+https://script.google.com/macros/s/AKfycbyKBfz77QfOmqQL3sk4J9WW4Z6te9Dib9ZyDIzFTgKjTRgOzBU_BHEOItd0vVjzNm2c/exec
 // =====================================================
 
 var isAdmin=false, jugadores=[], partidos=[], curTab="pa";
@@ -311,11 +311,11 @@ var HDR={pa:"PARTIDOS",cl:"CLASIFICACION",ju:"JUGADORES",np:"NUEVO PARTIDO",nj:"
 var TABS={pa:"sec-pa",cl:"sec-cl",ju:"sec-ju",np:"sec-np",nj:"sec-nj"};
 var AVCOLORS=["#B71C1C","#1565C0","#2E7D32","#F57F17","#6A1B9A","#00838F","#4E342E","#37474F"];
 
-function api(body) {
-  return fetch(SCRIPT_URL, {
-    method: "POST",
-    body: JSON.stringify(body)
-  }).then(function(r){ return r.json(); });
+function api(params) {
+  var qs = Object.keys(params).map(function(k){
+    return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+  }).join("&");
+  return fetch(SCRIPT_URL + "?" + qs).then(function(r){ return r.json(); });
 }
 
 function apiGet(action) {
@@ -550,7 +550,7 @@ function guardarEdicion(){
   var btn=document.getElementById("btn-edit-save"); btn.disabled=true; btn.textContent="Guardando...";
   var j=jugadores.find(function(x){return x.id===editingId;});
   var doUpdate=function(fotoUrl,fotoId){
-    api({action:"updateJugador",id:editingId,nombre:nombre,fotoUrl:fotoUrl,fotoId:fotoId,fotoAnteriorId:j?j.fotoId:""})
+    api({action:"updateJugador",id:editingId,nombre:nombre,fotoUrl:fotoUrl||"",fotoId:fotoId||"",fotoAnteriorId:j?j.fotoId:""})
     .then(function(r){
       if(!r.ok) throw new Error(r.error);
       if(j){ j.nombre=nombre; if(fotoUrl)j.fotoUrl=fotoUrl; if(fotoId)j.fotoId=fotoId; }

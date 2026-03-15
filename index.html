@@ -301,7 +301,7 @@ select option{background:#fff}
 // =====================================================
 //  PEGA AQUI TU URL DE APPS SCRIPT
 // =====================================================
-https://script.google.com/macros/s/AKfycbyKBfz77QfOmqQL3sk4J9WW4Z6te9Dib9ZyDIzFTgKjTRgOzBU_BHEOItd0vVjzNm2c/exec
+var SCRIPT_URL = "";
 // =====================================================
 
 var isAdmin=false, jugadores=[], partidos=[], curTab="pa";
@@ -315,11 +315,15 @@ function api(params) {
   var qs = Object.keys(params).map(function(k){
     return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
   }).join("&");
-  return fetch(SCRIPT_URL + "?" + qs).then(function(r){ return r.json(); });
+  var url = SCRIPT_URL + "?" + qs;
+  var proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
+  return fetch(proxy).then(function(r){ return r.json(); }).then(function(r){ return JSON.parse(r.contents); });
 }
 
 function apiGet(action) {
-  return fetch(SCRIPT_URL + "?action=" + action).then(function(r){ return r.json(); });
+  var url = SCRIPT_URL + "?action=" + action;
+  var proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
+  return fetch(proxy).then(function(r){ return r.json(); }).then(function(r){ return JSON.parse(r.contents); });
 }
 
 function avColor(n){var s=0;for(var i=0;i<n.length;i++)s+=n.charCodeAt(i);return AVCOLORS[s%AVCOLORS.length];}

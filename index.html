@@ -328,15 +328,13 @@ function api(params) {
   var qs = Object.keys(params).map(function(k){
     return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
   }).join("&");
-  var url = SCRIPT_URL + "?" + qs;
-  var proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
-  return fetch(proxy).then(function(r){ return r.json(); }).then(function(r){ return JSON.parse(r.contents); });
+  return fetch(SCRIPT_URL + "?" + qs, {redirect:"follow"})
+    .then(function(r){ return r.json(); });
 }
 
 function apiGet(action) {
-  var url = SCRIPT_URL + "?action=" + action;
-  var proxy = "https://api.allorigins.win/get?url=" + encodeURIComponent(url);
-  return fetch(proxy).then(function(r){ return r.json(); }).then(function(r){ return JSON.parse(r.contents); });
+  return fetch(SCRIPT_URL + "?action=" + action, {redirect:"follow"})
+    .then(function(r){ return r.json(); });
 }
 
 function avColor(n){var s=0;for(var i=0;i<n.length;i++)s+=n.charCodeAt(i);return AVCOLORS[s%AVCOLORS.length];}

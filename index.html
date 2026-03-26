@@ -264,13 +264,13 @@ select option{background:#fff}
 <button class="fab" id="fab" onclick="onFab()">+</button>
 
 <!-- MODAL LOGIN -->
-<div class="mo" id="modal-login">
+<div class="mo" id="modal-login" onclick="if(event.target===this)closeLogin()">
   <div class="md">
     <div class="md-handle"></div>
     <div class="md-body">
     <div class="md-title">Acceso administrador</div>
-    <div class="md-sub">Introduce la contrasena para gestionar la liga</div>
-    <div class="field"><label>Contrasena</label>
+    <div class="md-sub">Introduce la contraseña para gestionar la liga</div>
+    <div class="field"><label>Contraseña</label>
       <input type="password" id="pwd" placeholder="...">
     </div>
     <div class="md-err" id="lerr"></div>
@@ -283,7 +283,7 @@ select option{background:#fff}
 </div>
 
 <!-- MODAL EDITAR JUGADOR -->
-<div class="mo" id="modal-edit">
+<div class="mo" id="modal-edit" onclick="if(event.target===this)closeEditModal()">
   <div class="md">
     <div class="md-handle"></div>
     <div class="md-body">
@@ -318,6 +318,7 @@ var SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzIR9A5B9M3hAfyP2K8n6o
 // =====================================================
 
 var isAdmin=false, jugadores=[], partidos=[], curTab="pa";
+var _cbId=0;
 var fotoB64=null, fotoMime=null;
 var editFotoB64=null, editFotoMime=null, editingId=null;
 var HDR={pa:"PARTIDOS",cl:"CLASIFICACION",ju:"JUGADORES",np:"NUEVO PARTIDO",nj:"NUEVO JUGADOR"};
@@ -326,17 +327,24 @@ var AVCOLORS=["#B71C1C","#1565C0","#2E7D32","#F57F17","#6A1B9A","#00838F","#4E34
 
 function api(params) {
   return new Promise(function(resolve, reject) {
-    var cb = "cb_" + Date.now();
+    var cb = "cb_" + (++_cbId);
     var script = document.createElement("script");
     var qs = Object.keys(params).map(function(k){
       return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
     }).join("&");
+    var timer = setTimeout(function(){
+      delete window[cb];
+      if(script.parentNode) document.body.removeChild(script);
+      reject(new Error("Timeout"));
+    }, 15000);
     window[cb] = function(data) {
+      clearTimeout(timer);
       delete window[cb];
       document.body.removeChild(script);
       resolve(data);
     };
     script.onerror = function() {
+      clearTimeout(timer);
       delete window[cb];
       document.body.removeChild(script);
       reject(new Error("Error de red"));
@@ -351,7 +359,7 @@ function apiGet(action) {
 }
 
 function avColor(n){var s=0;for(var i=0;i<n.length;i++)s+=n.charCodeAt(i);return AVCOLORS[s%AVCOLORS.length];}
-function ini(n){return n.split(" ").map(function(w){return w[0];}).slice(0,2).join("").toUpperCase();}
+function ini(n){return n.split(" ").filter(function(w){return w.length>0;}).map(function(w){return w[0];}).slice(0,2).join("").toUpperCase();}
 function getNombre(id){var j=jugadores.find(function(x){return x.id===id;});return j?j.nombre:id;}
 function getFoto(id){var j=jugadores.find(function(x){return x.id===id;});return j&&j.fotoUrl?j.fotoUrl:"";}
 
@@ -361,7 +369,7 @@ function avHTML(id, sz) {
   var letters=j?ini(j.nombre):"?";
   var col=j?avColor(j.nombre):"#9E9E9E";
   var st="width:"+sz+"px;height:"+sz+"px;border-radius:50%;overflow:hidden;background:"+col+";display:flex;align-items:center;justify-content:center;font-size:"+(sz*.35).toFixed(0)+"px;font-weight:700;color:#fff;flex-shrink:0;border:2px solid rgba(0,0,0,.08)";
-  if(j&&j.fotoUrl) return '<div style="'+st+'"><img src="'+j.fotoUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML=\''+letters+'\'"></div>';
+  if(j&&j.fotoUrl) return '<div style="'+st+'"><img src="'+j.fotoUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentNode.innerHTML=\''+letters.replace(/'/g,"&#39;")+'\'"></div>';
   return '<div style="'+st+'">'+letters+'</div>';
 }
 
@@ -386,7 +394,12 @@ function loadData() {
     partidos  = r[1].data || [];
     renderAll();
   })
-  .catch(function(){ toast("Error cargando datos", "error"); });
+  .catch(function(){
+    toast("Error cargando datos", "error");
+    document.getElementById("lista-pa").innerHTML='<div class="empty">Error cargando partidos</div>';
+    document.getElementById("tb-cl").innerHTML='<div class="empty">Error cargando clasificación</div>';
+    document.getElementById("jg").innerHTML='<div class="empty" style="grid-column:1/-1">Error cargando jugadores</div>';
+  });
 }
 
 function calcStats() {
@@ -412,8 +425,8 @@ function renderPartidos(){
   if(!sorted.length){el.innerHTML='<div class="empty">Sin partidos registrados</div>';return;}
   el.innerHTML=sorted.map(function(p){
     var jA=+p.juegosA, jB=+p.juegosB, wA=jA>=13, wB=jB>=13;
-    var d=new Date(p.fecha);
-    var fecha=d.getDate()+"/"+(d.getMonth()+1)+"/"+String(d.getFullYear()).slice(2);
+    var dp=p.fecha.split("-");
+    var fecha=dp[2]+"/"+dp[1]+"/"+String(dp[0]).slice(2);
     return '<div class="partido-row">'
       +'<span class="p-fecha">'+fecha+'</span>'
       +avHTML(p.jugadorA,40)
@@ -591,7 +604,7 @@ function guardarEdicion(){
     api({action:"uploadFoto",base64:editFotoB64,mimeType:editFotoMime,nombre:nombre})
     .then(function(r){if(!r.ok)throw new Error(r.error); doUpdate(r.url,r.fileId);})
     .catch(function(e){document.getElementById("edit-err").textContent="Error foto"; btn.disabled=false; btn.textContent="GUARDAR";});
-  } else { doUpdate("",""); }
+  } else { doUpdate(j?j.fotoUrl||"":"", j?j.fotoId||"":""); }
 }
 
 // GUARDAR PARTIDO
@@ -666,8 +679,7 @@ function closeLogin(){ document.getElementById("modal-login").classList.remove("
 function doLogin(){
   var pwd=document.getElementById("pwd").value;
   document.getElementById("lerr").textContent="Verificando...";
-  fetch(SCRIPT_URL + "?action=login&password=" + encodeURIComponent(pwd))
-  .then(function(r){ return r.json(); })
+  api({action:"login",password:pwd})
   .then(function(r){
     if(r.ok){
       isAdmin=true; closeLogin();
@@ -677,7 +689,7 @@ function doLogin(){
       document.getElementById("app").classList.add("admin-mode");
       toast("Sesion iniciada","ok");
     } else {
-      document.getElementById("lerr").textContent="Contrasena incorrecta";
+      document.getElementById("lerr").textContent="Contraseña incorrecta";
     }
   })
   .catch(function(){ document.getElementById("lerr").textContent="Error de conexion"; });

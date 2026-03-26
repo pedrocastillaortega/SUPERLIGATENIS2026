@@ -325,16 +325,29 @@ var TABS={pa:"sec-pa",cl:"sec-cl",ju:"sec-ju",np:"sec-np",nj:"sec-nj"};
 var AVCOLORS=["#B71C1C","#1565C0","#2E7D32","#F57F17","#6A1B9A","#00838F","#4E342E","#37474F"];
 
 function api(params) {
-  var qs = Object.keys(params).map(function(k){
-    return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
-  }).join("&");
-  return fetch(SCRIPT_URL + "?" + qs, {redirect:"follow"})
-    .then(function(r){ return r.json(); });
+  return new Promise(function(resolve, reject) {
+    var cb = "cb_" + Date.now();
+    var script = document.createElement("script");
+    var qs = Object.keys(params).map(function(k){
+      return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
+    }).join("&");
+    window[cb] = function(data) {
+      delete window[cb];
+      document.body.removeChild(script);
+      resolve(data);
+    };
+    script.onerror = function() {
+      delete window[cb];
+      document.body.removeChild(script);
+      reject(new Error("Error de red"));
+    };
+    script.src = SCRIPT_URL + "?" + qs + "&callback=" + cb;
+    document.body.appendChild(script);
+  });
 }
 
 function apiGet(action) {
-  return fetch(SCRIPT_URL + "?action=" + action, {redirect:"follow"})
-    .then(function(r){ return r.json(); });
+  return api({action: action});
 }
 
 function avColor(n){var s=0;for(var i=0;i<n.length;i++)s+=n.charCodeAt(i);return AVCOLORS[s%AVCOLORS.length];}

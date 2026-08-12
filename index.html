@@ -329,24 +329,28 @@ function api(params) {
   return new Promise(function(resolve, reject) {
     var cb = "cb_" + (++_cbId);
     var script = document.createElement("script");
+    var done = false;
+    var timer;
+    var cleanup = function(){
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      try { delete window[cb]; } catch(e) { window[cb] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    };
     var qs = Object.keys(params).map(function(k){
       return encodeURIComponent(k) + "=" + encodeURIComponent(params[k]);
     }).join("&");
-    var timer = setTimeout(function(){
-      delete window[cb];
-      if(script.parentNode) document.body.removeChild(script);
+    timer = setTimeout(function(){
+      cleanup();
       reject(new Error("Timeout"));
     }, 15000);
     window[cb] = function(data) {
-      clearTimeout(timer);
-      delete window[cb];
-      document.body.removeChild(script);
+      cleanup();
       resolve(data);
     };
     script.onerror = function() {
-      clearTimeout(timer);
-      delete window[cb];
-      document.body.removeChild(script);
+      cleanup();
       reject(new Error("Error de red"));
     };
     script.src = SCRIPT_URL + "?" + qs + "&callback=" + cb;

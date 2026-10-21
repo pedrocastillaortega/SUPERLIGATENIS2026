@@ -181,6 +181,12 @@ select option{background:#fff}
 
 .j-card{cursor:pointer}.j-card:active{background:#FAFAFA}
 
+/* APODOS */
+.j-apodo{font-size:12px;font-weight:600;color:var(--dim);font-style:italic;text-align:center;margin-top:-4px}
+.c-name-wrap{display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.c-name-wrap>span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-apodo{font-size:11px;color:var(--dim);font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* INSIGNIAS */
 .j-badges{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:-2px}
 .j-badge{font-size:17px;line-height:1}
@@ -580,7 +586,11 @@ function renderClasif(){
     var pos=i+1, pc=pos===1?"g":pos===2?"s":pos===3?"b":"";
     return '<div class="clasif-row">'
       +'<span class="pos-num '+pc+'">'+pos+'</span>'
-      +'<span class="c-name">'+avHTML(j.id,30)+'<span>'+j.nombre+'</span>'+rachaHTML(j.id)+'</span>'
+      +'<span class="c-name">'+avHTML(j.id,30)
+      +(function(){var a=calcApodo(j.id);
+        return '<div class="c-name-wrap"><span>'+j.nombre+'</span>'+(a?'<span class="c-apodo">'+a.icon+' '+a.name+'</span>':'')+'</div>';
+      }())
+      +rachaHTML(j.id)+'</span>'
       +'<span class="c-stat">'+j.pj+'</span><span class="c-stat">'+j.pg+'</span><span class="c-stat">'+j.pp+'</span>'
       +'<span class="c-stat">'+j.jg+'</span><span class="c-stat">'+j.jp+'</span>'
       +'<span class="c-pts">'+j.pts+'</span>'
@@ -596,6 +606,7 @@ function renderJugadores(){
     return '<div class="j-card" onclick="openPerfil(\''+j.id+'\')">'
       +avHTML(j.id,72)
       +'<div class="j-name">'+j.nombre+'</div>'
+      +(function(){var a=calcApodo(j.id);return a?'<div class="j-apodo">'+a.icon+' '+a.name+'</div>':'';}())
       +'<div class="j-meta">'+np+' partido'+(np!==1?"s":"")+'</div>'
       +'<div class="j-racha">'+rachaHTML(j.id)+'</div>'
       +(function(){var bs=calcInsignias(j.id);return bs.length?'<div class="j-badges">'+bs.slice(0,4).map(function(b){return '<span class="j-badge" title="'+b.name+'">'+b.icon+'</span>';}).join('')+'</div>':'';}())
@@ -1148,6 +1159,40 @@ function calcInsignias(id){
   return badges;
 }
 
+function calcApodo(id){
+  var rank=calcStats();
+  var pos=rank.findIndex(function(x){return x.id===id;});
+  var st=rank[pos]||{pj:0,pg:0,pp:0};
+  var lider=rank.length?rank[0].id:null;
+  var racha=calcRacha(id);
+  if(!st.pj) return null;
+  if(st.pj<=2) return{icon:'⭐',name:'El Prometedor'};
+  if(st.pg===0) return{icon:'😤',name:'El Sparring'};
+  if(st.pp===0) return{icon:'🏅',name:'El Invicto'};
+  if(pos===0) return{icon:'👑',name:'El Maestro'};
+  if(racha.type==='win'&&racha.count>=4) return{icon:'🚀',name:'El Cohete'};
+  if(racha.type==='loss'&&racha.count>=4) return{icon:'🧊',name:'El Gafe'};
+  if(partidos.some(function(p){
+    var isA=p.jugadorA===id,isB=p.jugadorB===id; if(!isA&&!isB) return false;
+    var myG=isA?+p.juegosA:+p.juegosB,rivG=isA?+p.juegosB:+p.juegosA;
+    return myG>=13&&(myG-rivG)>=7;
+  })) return{icon:'⚡',name:'El Toro'};
+  if(st.pj>=5&&st.pg/st.pj>0.70) return{icon:'🎯',name:'El Finalizador'};
+  if(lider&&lider!==id&&partidos.some(function(p){
+    var isA=p.jugadorA===id,isB=p.jugadorB===id; if(!isA&&!isB) return false;
+    if((isA?p.jugadorB:p.jugadorA)!==lider) return false;
+    return(isA?+p.juegosA:+p.juegosB)>=13;
+  })) return{icon:'🦁',name:'El Matagigantes'};
+  if(partidos.some(function(p){
+    var isA=p.jugadorA===id,isB=p.jugadorB===id; if(!isA&&!isB) return false;
+    var myG=isA?+p.juegosA:+p.juegosB,rivG=isA?+p.juegosB:+p.juegosA;
+    return myG>=13&&(myG-rivG)<=2;
+  })) return{icon:'🎲',name:'El Milagrero'};
+  if(st.pj>=5&&st.pg/st.pj<0.35) return{icon:'💦',name:'El Colador'};
+  if(st.pj>=10) return{icon:'🎾',name:'El Veterano'};
+  return null;
+}
+
 function rachaHTML(id){
   var r=calcRacha(id);
   if(!r.count) return '';
@@ -1191,6 +1236,7 @@ function openPerfil(id){
     +avHTML(id,72)
     +'<div class="perfil-hero-info">'
     +'<div class="perfil-name">'+j.nombre+'</div>'
+    +(function(){var a=calcApodo(id);return a?'<div style="font-size:14px;font-style:italic;color:var(--dim);margin-bottom:8px;font-weight:600">'+a.icon+' '+a.name+'</div>':'';}())
     +'<div class="perfil-global">';
   if(global){
     html+='<span class="perfil-chip">'+global.pj+' '+(global.pj===1?'partido':'partidos')+'</span>'

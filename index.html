@@ -169,6 +169,17 @@ select option{background:#fff}
 
 .j-card{cursor:pointer}.j-card:active{background:#FAFAFA}
 
+/* INSIGNIAS */
+.j-badges{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;margin-top:-2px}
+.j-badge{font-size:17px;line-height:1}
+.insig-section{background:var(--white);margin-top:1px;padding:16px 16px 4px}
+.insig-title{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.insig-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--divider)}
+.insig-row:last-child{border-bottom:none}
+.insig-icon{font-size:26px;width:40px;text-align:center;flex-shrink:0}
+.insig-name{font-size:14px;font-weight:600;color:var(--fg)}
+.insig-desc{font-size:12px;color:var(--dim);margin-top:2px}
+
 /* RACHAS */
 .racha-badge{font-size:11px;font-weight:700;padding:2px 8px;border-radius:10px;white-space:nowrap;flex-shrink:0;letter-spacing:.2px}
 .racha-w{background:#FFF3E0;color:#E65100}
@@ -515,6 +526,7 @@ function renderJugadores(){
       +'<div class="j-name">'+j.nombre+'</div>'
       +'<div class="j-meta">'+np+' partido'+(np!==1?"s":"")+'</div>'
       +'<div class="j-racha">'+rachaHTML(j.id)+'</div>'
+      +(function(){var bs=calcInsignias(j.id);return bs.length?'<div class="j-badges">'+bs.slice(0,4).map(function(b){return '<span class="j-badge" title="'+b.name+'">'+b.icon+'</span>';}).join('')+'</div>':'';}())
       +'<button class="j-edit-btn" onclick="event.stopPropagation();openEditModal(\''+j.id+'\')">&#9998; Editar</button>'
       +'</div>';
   }).join("");
@@ -812,6 +824,56 @@ function calcRacha(id){
   return {count:count,type:type};
 }
 
+function calcInsignias(id){
+  var rank=calcStats();
+  var pos=rank.findIndex(function(x){return x.id===id;});
+  var st=rank[pos]||{pj:0,pg:0,pp:0,jg:0,jp:0,pts:0};
+  var lider=rank.length?rank[0].id:null;
+  var badges=[];
+
+  if(pos===0&&st.pj>=3)
+    badges.push({icon:'👑',name:'Líder',desc:'Ocupa el 1er puesto de la clasificación'});
+
+  if(st.pp===0&&st.pj>=3)
+    badges.push({icon:'🏅',name:'Invicto',desc:'Sin ninguna derrota ('+st.pj+' partidos)'});
+
+  var racha=calcRacha(id);
+  if(racha.type==='win'&&racha.count>=3)
+    badges.push({icon:'🔥',name:'En Racha',desc:racha.count+' victorias consecutivas'});
+
+  var rivals={};
+  partidos.forEach(function(p){
+    var isA=p.jugadorA===id,isB=p.jugadorB===id; if(!isA&&!isB) return;
+    var rid=isA?p.jugadorB:p.jugadorA;
+    var myG=isA?+p.juegosA:+p.juegosB,rivG=isA?+p.juegosB:+p.juegosA;
+    if(!rivals[rid]) rivals[rid]={pg:0,pp:0};
+    if(myG>=13) rivals[rid].pg++; else if(rivG>=13) rivals[rid].pp++;
+  });
+  var domRival=null;
+  Object.keys(rivals).forEach(function(rid){
+    var rv=rivals[rid];
+    if(rv.pg>=2&&rv.pp===0) domRival=rid;
+  });
+  if(domRival)
+    badges.push({icon:'💪',name:'Dominador',desc:'Invicto vs '+getNombre(domRival)+' ('+rivals[domRival].pg+'-0)'});
+
+  if(lider&&lider!==id&&rivals[lider]&&rivals[lider].pg>0)
+    badges.push({icon:'🦁',name:'Matagigantes',desc:'Ha vencido al líder '+getNombre(lider)});
+
+  if(st.pj>=10)
+    badges.push({icon:'🎾',name:'Veterano',desc:st.pj+' partidos jugados'});
+
+  var aplastante=partidos.some(function(p){
+    var isA=p.jugadorA===id,isB=p.jugadorB===id; if(!isA&&!isB) return false;
+    var myG=isA?+p.juegosA:+p.juegosB,rivG=isA?+p.juegosB:+p.juegosA;
+    return myG>=13&&(myG-rivG)>=7;
+  });
+  if(aplastante)
+    badges.push({icon:'⚡',name:'Aplastante',desc:'Victoria con 7+ juegos de ventaja'});
+
+  return badges;
+}
+
 function rachaHTML(id){
   var r=calcRacha(id);
   if(!r.count) return '';
@@ -867,6 +929,20 @@ function openPerfil(id){
       :'<span class="perfil-chip racha-l">❄️ '+r.count+(r.count===1?' derrota':' derrotas')+' seguidas</span>');
   }
   html+='</div></div></div>';
+
+  // Insignias
+  var badges=calcInsignias(id);
+  if(badges.length){
+    html+='<div class="insig-section"><div class="insig-title">Insignias</div>';
+    html+=badges.map(function(b){
+      return '<div class="insig-row">'
+        +'<span class="insig-icon">'+b.icon+'</span>'
+        +'<div><div class="insig-name">'+b.name+'</div>'
+        +'<div class="insig-desc">'+b.desc+'</div></div>'
+        +'</div>';
+    }).join('');
+    html+='</div>';
+  }
 
   // Grupos por rival
   if(!rivalList.length){

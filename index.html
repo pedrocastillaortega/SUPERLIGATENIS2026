@@ -137,6 +137,34 @@ select option{background:#fff}
 .toast.error{background:var(--red2)}.toast.ok{background:#2E7D32}
 @keyframes fi{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 
+/* PERFIL DE JUGADOR */
+.perfil-hero{background:var(--white);padding:20px 16px;display:flex;align-items:center;gap:16px;border-bottom:3px solid var(--red)}
+.perfil-hero-info{flex:1;min-width:0}
+.perfil-name{font-size:20px;font-weight:700;color:var(--fg);margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.perfil-global{display:flex;gap:10px;flex-wrap:wrap}
+.perfil-chip{background:var(--bg);border-radius:20px;padding:4px 10px;font-size:12px;font-weight:500;color:var(--dim)}
+.perfil-chip.win{background:#E3F2FD;color:var(--blue)}.perfil-chip.pts{background:#FFF8E1;color:#F57F17}
+
+.rival-card{background:var(--white);margin-bottom:1px}
+.rival-hdr{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--divider)}
+.rival-info{flex:1;min-width:0}
+.rival-name{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rival-substats{font-size:12px;color:var(--dim);margin-top:3px}
+.h2h-box{display:flex;align-items:center;gap:5px;background:var(--bg);border-radius:10px;padding:6px 12px;flex-shrink:0}
+.h2h-v{font-size:17px;font-weight:700;color:var(--blue)}
+.h2h-sep{font-size:13px;color:var(--dim)}
+.h2h-d{font-size:17px;font-weight:700;color:var(--red2)}
+
+.rival-match{display:grid;grid-template-columns:68px 1fr auto;align-items:center;padding:10px 16px 10px 20px;border-bottom:1px solid var(--divider);min-height:44px}
+.rival-match:last-child{border-bottom:none}
+.rv-fecha{font-size:12px;color:var(--dim)}
+.rv-score{font-size:16px;font-weight:700;text-align:center}
+.rv-w .rv-score{color:var(--blue)}.rv-l .rv-score{color:var(--red2)}.rv-n .rv-score{color:var(--dim)}
+.rv-badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:10px;text-transform:uppercase;letter-spacing:.4px}
+.rv-w .rv-badge{background:#E3F2FD;color:var(--blue)}.rv-l .rv-badge{background:#FFEBEE;color:var(--red2)}.rv-n .rv-badge{background:var(--bg);color:var(--dim)}
+
+.j-card{cursor:pointer}.j-card:active{background:#FAFAFA}
+
 /* MISC */
 .spin{width:20px;height:20px;border:2.5px solid rgba(183,28,28,.2);border-top-color:var(--red2);border-radius:50%;animation:sp .6s linear infinite;display:inline-block;vertical-align:middle;margin-right:10px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -151,7 +179,8 @@ select option{background:#fff}
 
 <header>
   <div class="hdr-left">
-    <div class="hdr-icon">&#127939;</div>
+    <button class="hdr-btn" id="btn-back" style="display:none" onclick="closePerfil()">&#8592;</button>
+    <div class="hdr-icon" id="hdr-icon">&#127939;</div>
     <span class="hdr-title" id="hdr-title">PARTIDOS</span>
   </div>
   <div class="hdr-right">
@@ -216,6 +245,11 @@ select option{background:#fff}
       <div class="pvbox" id="pvbox"></div>
       <button class="btn-save" id="btn-gp" onclick="guardarPartido()">GUARDAR PARTIDO</button>
     </div>
+  </div>
+
+  <!-- PERFIL JUGADOR -->
+  <div class="sec" id="sec-pe">
+    <div id="perfil-content"></div>
   </div>
 
   <!-- NUEVO JUGADOR -->
@@ -321,8 +355,9 @@ var isAdmin=false, jugadores=[], partidos=[], curTab="pa";
 var _cbId=0;
 var fotoB64=null, fotoMime=null;
 var editFotoB64=null, editFotoMime=null, editingId=null;
-var HDR={pa:"PARTIDOS",cl:"CLASIFICACION",ju:"JUGADORES",np:"NUEVO PARTIDO",nj:"NUEVO JUGADOR"};
-var TABS={pa:"sec-pa",cl:"sec-cl",ju:"sec-ju",np:"sec-np",nj:"sec-nj"};
+var perfilId=null;
+var HDR={pa:"PARTIDOS",cl:"CLASIFICACION",ju:"JUGADORES",np:"NUEVO PARTIDO",nj:"NUEVO JUGADOR",pe:"PERFIL"};
+var TABS={pa:"sec-pa",cl:"sec-cl",ju:"sec-ju",np:"sec-np",nj:"sec-nj",pe:"sec-pe"};
 var AVCOLORS=["#B71C1C","#1565C0","#2E7D32","#F57F17","#6A1B9A","#00838F","#4E342E","#37474F"];
 
 function api(params) {
@@ -462,11 +497,11 @@ function renderJugadores(){
   if(!jugadores.length){el.innerHTML='<div class="empty" style="grid-column:1/-1">Sin jugadores</div>';return;}
   el.innerHTML=jugadores.map(function(j){
     var np=partidos.filter(function(p){return p.jugadorA===j.id||p.jugadorB===j.id;}).length;
-    return '<div class="j-card">'
+    return '<div class="j-card" onclick="openPerfil(\''+j.id+'\')">'
       +avHTML(j.id,72)
       +'<div class="j-name">'+j.nombre+'</div>'
       +'<div class="j-meta">'+np+' partido'+(np!==1?"s":"")+'</div>'
-      +'<button class="j-edit-btn" onclick="openEditModal(\''+j.id+'\')">&#9998; Editar</button>'
+      +'<button class="j-edit-btn" onclick="event.stopPropagation();openEditModal(\''+j.id+'\')">&#9998; Editar</button>'
       +'</div>';
   }).join("");
 }
@@ -711,6 +746,11 @@ function logout(){
 function onFab(){ if(curTab==="ju"||curTab==="nj") showTab("nj"); else showTab("np"); }
 
 function showTab(name){
+  if(curTab==="pe"){
+    document.getElementById("btn-back").style.display="none";
+    document.getElementById("hdr-icon").style.display="flex";
+    perfilId=null;
+  }
   curTab=name;
   document.querySelectorAll(".sec").forEach(function(s){s.classList.remove("active");});
   var s=document.getElementById(TABS[name]); if(s) s.classList.add("active");
@@ -720,6 +760,105 @@ function showTab(name){
     if(b) b.classList.toggle("active", t===name);
   });
   window.scrollTo(0,0);
+}
+
+function openPerfil(id){
+  var j=jugadores.find(function(x){return x.id===id;}); if(!j) return;
+  perfilId=id;
+  var global=calcStats().find(function(x){return x.id===id;});
+
+  // Agrupar partidos por rival
+  var rivals={};
+  partidos.forEach(function(p){
+    var isA=p.jugadorA===id, isB=p.jugadorB===id;
+    if(!isA&&!isB) return;
+    var rid=isA?p.jugadorB:p.jugadorA;
+    var myG=isA?+p.juegosA:+p.juegosB;
+    var rivG=isA?+p.juegosB:+p.juegosA;
+    if(!rivals[rid]) rivals[rid]={pg:0,pp:0,jg:0,jp:0,rawPts:0,matches:[]};
+    var rv=rivals[rid], tot=myG+rivG;
+    var won=myG>=13, lost=rivG>=13;
+    rv.jg+=myG; rv.jp+=rivG;
+    if(tot) rv.rawPts+=10*myG/tot;
+    if(won) rv.pg++; else if(lost) rv.pp++;
+    rv.matches.push({fecha:p.fecha,myG:myG,rivG:rivG,won:won,lost:lost});
+  });
+
+  var rivalList=Object.keys(rivals).map(function(rid){
+    var rv=rivals[rid];
+    return {id:rid,pg:rv.pg,pp:rv.pp,jg:rv.jg,jp:rv.jp,pts:+rv.rawPts.toFixed(2),matches:rv.matches};
+  }).sort(function(a,b){return (b.pg+b.pp)-(a.pg+a.pp);});
+
+  // ---- Renderizado ----
+  var html='';
+
+  // Cabecera del jugador
+  html+='<div class="perfil-hero">'
+    +avHTML(id,72)
+    +'<div class="perfil-hero-info">'
+    +'<div class="perfil-name">'+j.nombre+'</div>'
+    +'<div class="perfil-global">';
+  if(global){
+    html+='<span class="perfil-chip">'+global.pj+' '+(global.pj===1?'partido':'partidos')+'</span>'
+      +'<span class="perfil-chip win">'+global.pg+'V · '+global.pp+'D</span>'
+      +'<span class="perfil-chip">'+global.jg+'JG · '+global.jp+'JP</span>'
+      +'<span class="perfil-chip pts">'+global.pts+' pts</span>';
+  }
+  html+='</div></div></div>';
+
+  // Grupos por rival
+  if(!rivalList.length){
+    html+='<div class="empty">Sin partidos registrados</div>';
+  } else {
+    rivalList.forEach(function(rv){
+      var rName=getNombre(rv.id);
+      html+='<div class="rival-card">'
+        +'<div class="rival-hdr">'
+        +avHTML(rv.id,40)
+        +'<div class="rival-info">'
+        +'<div class="rival-name">'+rName+'</div>'
+        +'<div class="rival-substats">'+rv.jg+'JG · '+rv.jp+'JP · '+rv.pts+' pts</div>'
+        +'</div>'
+        +'<div class="h2h-box">'
+        +'<span class="h2h-v">'+rv.pg+'V</span>'
+        +'<span class="h2h-sep">-</span>'
+        +'<span class="h2h-d">'+rv.pp+'D</span>'
+        +'</div>'
+        +'</div>';
+
+      rv.matches.slice().sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);})
+      .forEach(function(m){
+        var dp=m.fecha.split('-');
+        var fecha=dp[2]+'/'+dp[1]+'/'+String(dp[0]).slice(2);
+        var cls=m.won?'rv-w':m.lost?'rv-l':'rv-n';
+        var badge=m.won?'Victoria':m.lost?'Derrota':'Empate';
+        html+='<div class="rival-match '+cls+'">'
+          +'<span class="rv-fecha">'+fecha+'</span>'
+          +'<span class="rv-score">'+m.myG+' - '+m.rivG+'</span>'
+          +'<span class="rv-badge">'+badge+'</span>'
+          +'</div>';
+      });
+
+      html+='</div>';
+    });
+  }
+
+  document.getElementById("perfil-content").innerHTML=html;
+  document.querySelectorAll(".sec").forEach(function(s){s.classList.remove("active");});
+  document.getElementById("sec-pe").classList.add("active");
+  document.getElementById("hdr-title").textContent=j.nombre.toUpperCase();
+  document.getElementById("hdr-icon").style.display="none";
+  document.getElementById("btn-back").style.display="flex";
+  ["pa","cl","ju"].forEach(function(t){var b=document.getElementById("nav-"+t);if(b)b.classList.remove("active");});
+  curTab="pe";
+  window.scrollTo(0,0);
+}
+
+function closePerfil(){
+  document.getElementById("btn-back").style.display="none";
+  document.getElementById("hdr-icon").style.display="flex";
+  perfilId=null;
+  showTab("ju");
 }
 
 function toast(msg,type){

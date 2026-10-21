@@ -436,6 +436,22 @@ select option{background:#fff}
   </div>
 </div>
 
+<!-- MODAL COMENTARISTA -->
+<div class="mo" id="modal-com" onclick="if(event.target===this)cerrarComentario()">
+  <div class="md">
+    <div class="md-handle"></div>
+    <div class="md-body" style="text-align:center">
+      <div id="com-emoji" style="font-size:52px;line-height:1;margin-bottom:12px"></div>
+      <div id="com-titulo" style="font-size:19px;font-weight:700;color:var(--fg);margin-bottom:16px;line-height:1.3"></div>
+      <div id="com-texto" style="font-size:14px;color:#444;line-height:1.75;margin-bottom:20px;text-align:left"></div>
+      <button class="btn-save" onclick="compartirComentario()">📤 Compartir por WhatsApp</button>
+      <div style="margin-top:10px">
+        <button class="btn-text" style="margin:0 auto" onclick="cerrarComentario()">CERRAR</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toasts"></div>
 </div>
 
@@ -832,6 +848,75 @@ function guardarEdicion(){
   } else { doUpdate(j?j.fotoUrl||"":"", j?j.fotoId||"":""); }
 }
 
+// COMENTARISTA
+var _comWA='';
+
+function generarComentario(ganId,perId,gW,gL,fecha,prevVeng){
+  var nW=getNombre(ganId),nL=getNombre(perId);
+  var apW=calcApodo(ganId),apL=calcApodo(perId);
+  var tW=apW?'"'+apW.icon+' '+apW.name+'"':null;
+  var diff=gW-gL, rachaW=calcRacha(ganId);
+  var esVeng=prevVeng&&prevVeng.loser===ganId;
+  var e,t,tx;
+
+  if(esVeng){
+    e='⚡';t='¡¡LA VENGANZA HA LLEGADO!!';
+    tx=nW+(tW?' ('+tW+')':'')+' cobra su deuda ante '+nL+' con un contundente '+gW+'-'+gL+'.'
+      +' Después de '+prevVeng.count+' derrotas seguidas, el karma vuelve.'
+      +' ¡NADIE escapa de la pista sin pagar! 💀';
+  } else if(diff>=8){
+    e='💥';t='¡¡'+nW.toUpperCase()+' SIN PIEDAD!!';
+    tx=(tW?tW+', ':'')+nW+' no ha dado ni una opción. '+gW+'-'+gL+' ante '+nL+'.'
+      +' Dominado de principio a fin.'+(rachaW.count>=3?' Y van '+rachaW.count+' seguidas. 🔥':' Así se hace. 💪');
+  } else if(diff>=5){
+    e='💪';t='¡VICTORIA CONVINCENTE!';
+    tx='Partido controlado. '+nW+' '+gW+'-'+gL+' '+nL+'.'
+      +(apL?' '+nL+', "'+apL.name.toLowerCase()+'", no encontró respuestas.':' Sin opciones para el rival.')
+      +' La clasificación sigue moviéndose. 🎾';
+  } else if(diff<=1){
+    e='😱';t='¡¡INFARTO EN LA PISTA!!';
+    tx='UN. JUEGO. DE. DIFERENCIA. '+nW+' '+gW+'-'+gL+' '+nL+'.'
+      +' Este partido habrá que contarlo a los nietos.'
+      +' '+(tW?tW:nW)+' gana el pulso de los nervios. 🫀';
+  } else if(diff<=2){
+    e='🔥';t='¡¡QUÉ PARTIDAZO!!';
+    tx='Solo '+diff+' juegos entre ellos. '+nW+' '+gW+'-'+gL+' '+nL+'.'
+      +' Tenis de alta tensión en la Superliga 2026. 🎾';
+  } else if(rachaW.count>=4){
+    e='🚀';t='¡¡'+rachaW.count+' SEGUIDAS!! ¿ALGUIEN PUEDE PARARLO?';
+    tx=(tW?tW:nW)+' lleva '+rachaW.count+' victorias al hilo y hoy suma otra:'
+      +' '+gW+'-'+gL+' ante '+nL+'. La liga tiene un problema llamado '+nW+'. 👑';
+  } else if(rachaW.count>=2){
+    e='📈';t='¡'+nW.toUpperCase()+' ENCADENA!';
+    tx=rachaW.count+' victorias seguidas para '+(tW?tW:nW)+'. Hoy '+gW+'-'+gL+' ante '+nL+'.'
+      +' La racha está servida. ¿Quién la romperá? 🤔';
+  } else {
+    var opts=[
+      {e:'🏆',t:'¡RESULTADO FINAL!',
+       tx:nW+' '+gW+' — '+gL+' '+nL+'.'+(tW?' '+tW+' se apunta otro.':' Un punto más en el casillero.')+' La Superliga 2026 no para. 🎾'},
+      {e:'👊',t:'¡'+nW.toUpperCase()+' LO HACE!',
+       tx:nW+(tW?' ('+tW+')':'')+' derrota a '+nL+' por '+gW+'-'+gL+'. Así se construyen los rankings. 💪'},
+      {e:'🎾',t:'¡PUNTO PARA '+nW.toUpperCase()+'!',
+       tx:nW+' suma y '+nL+' se queda con las ganas. '+gW+'-'+gL+'. La Superliga de Tenis 2026 no descansa. 🔥'},
+    ];
+    var o=opts[Math.floor(Math.random()*opts.length)];
+    e=o.e;t=o.t;tx=o.tx;
+  }
+  var dp=fecha.split('-'),fs=dp[2]+'/'+dp[1]+'/'+String(dp[0]).slice(2);
+  return{emoji:e,titulo:t,texto:tx,wa:e+' '+t+'\n\n'+tx+'\n\nSuperliga de Tenis 2026 · '+fs};
+}
+
+function mostrarComentario(ganId,perID,gW,gL,fecha,prevVeng){
+  var c=generarComentario(ganId,perID,gW,gL,fecha,prevVeng);
+  _comWA=c.wa;
+  document.getElementById('com-emoji').textContent=c.emoji;
+  document.getElementById('com-titulo').textContent=c.titulo;
+  document.getElementById('com-texto').textContent=c.texto;
+  document.getElementById('modal-com').classList.add('show');
+}
+function cerrarComentario(){document.getElementById('modal-com').classList.remove('show');}
+function compartirComentario(){window.open('https://wa.me/?text='+encodeURIComponent(_comWA),'_blank');}
+
 // GUARDAR PARTIDO
 function guardarPartido(){
   var fecha=document.getElementById("p-fecha").value;
@@ -842,6 +927,9 @@ function guardarPartido(){
   if(isNaN(jA)||isNaN(jB)||jA<0||jB<0) return toast("Juegos invalidos","error");
   if(jA!==13&&jB!==13) return toast("Un jugador debe llegar a 13 juegos","error");
   if(jA===13&&jB===13) return toast("Ambos no pueden tener 13","error");
+  var ganId=jA>=13?idA:idB, perId=jA>=13?idB:idA;
+  var gW=jA>=13?jA:jB, gL=jA>=13?jB:jA;
+  var prevVeng=calcVenganza(idA,idB);
   var btn=document.getElementById("btn-gp"); btn.disabled=true; btn.textContent="Guardando...";
   api({action:"addPartido",fecha:fecha,jugadorA:idA,jugadorB:idB,juegosA:jA,juegosB:jB})
   .then(function(r){
@@ -853,7 +941,8 @@ function guardarPartido(){
     document.getElementById("pvbox").style.display="none";
     document.getElementById("pveng").style.display="none";
     document.getElementById("pvpred").style.display="none";
-    toast("Partido guardado","ok"); showTab("pa");
+    showTab("pa");
+    mostrarComentario(ganId,perId,gW,gL,fecha,prevVeng);
   })
   .catch(function(e){toast("Error: "+(e.message||e),"error");})
   .finally(function(){btn.disabled=false; btn.textContent="GUARDAR PARTIDO";});

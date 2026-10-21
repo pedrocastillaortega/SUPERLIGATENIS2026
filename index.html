@@ -100,6 +100,15 @@ select option{background:#fff}
 
 /* PREVIEW PARTIDO */
 .pvbox{background:#FFF3E0;border-left:4px solid #FF8F00;border-radius:0 8px 8px 0;padding:12px 14px;font-size:14px;color:#E65100;margin-bottom:16px;display:none;line-height:1.6}
+.pvpred{background:linear-gradient(135deg,#1A237E,#311B92);border-radius:10px;padding:16px;margin-bottom:16px;display:none;color:#fff}
+.pvpred-title{font-size:11px;font-weight:700;opacity:.7;text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+.pvpred-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.pvpred-name{font-size:13px;font-weight:600;width:76px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.pvpred-bar-wrap{flex:1;background:rgba(255,255,255,.15);border-radius:4px;height:9px;overflow:hidden}
+.pvpred-bar{height:9px;border-radius:4px;background:rgba(255,255,255,.85);transition:width .6s cubic-bezier(.4,0,.2,1)}
+.pvpred-pct{font-size:15px;font-weight:700;width:38px;text-align:right;flex-shrink:0}
+.pvpred-fav{font-size:10px;font-weight:700;background:rgba(255,255,255,.25);border-radius:8px;padding:2px 7px;flex-shrink:0}
+.pvpred-footer{font-size:11px;opacity:.55;margin-top:12px;text-align:center;border-top:1px solid rgba(255,255,255,.15);padding-top:10px}
 .pveng{background:linear-gradient(135deg,#B71C1C,#C62828);border-radius:10px;padding:16px;font-size:14px;color:#fff;margin-bottom:16px;display:none;text-align:center;line-height:1.7;box-shadow:0 4px 14px rgba(183,28,28,.4)}
 .pveng-title{font-size:20px;font-weight:700;letter-spacing:.5px;display:block;margin-bottom:4px}
 .pveng-sub{font-size:13px;opacity:.9}
@@ -296,6 +305,7 @@ select option{background:#fff}
         <div class="field"><label>Jugador local</label><select id="p-ja"><option value="">- Selecciona -</option></select></div>
         <div class="field"><label>Jugador visitante</label><select id="p-jb"><option value="">- Selecciona -</option></select></div>
       </div>
+      <div class="pvpred" id="pvpred"></div>
       <div class="form-row">
         <div class="field"><label>Juegos local</label><input type="number" id="p-ga" min="0" max="13" placeholder="0" inputmode="numeric"></div>
         <div class="field"><label>Juegos visitante</label><input type="number" id="p-gb" min="0" max="13" placeholder="0" inputmode="numeric"></div>
@@ -608,6 +618,34 @@ function updateStats(){
   var r=calcStats(); document.getElementById("s3").textContent=r.length?r[0].nombre.split(" ")[0]:"-";
 }
 
+function predecirPartido(idA,idB){
+  var h2hMs=partidos.filter(function(p){
+    return(p.jugadorA===idA&&p.jugadorB===idB)||(p.jugadorA===idB&&p.jugadorB===idA);
+  });
+  var h2hScoreA=0.5;
+  if(h2hMs.length>=2){
+    var wA=h2hMs.filter(function(p){var isA=p.jugadorA===idA;return(isA?+p.juegosA:+p.juegosB)>=13;}).length;
+    h2hScoreA=wA/h2hMs.length;
+  }
+  function forma(id){
+    var ms=partidos.filter(function(p){return p.jugadorA===id||p.jugadorB===id;})
+      .sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);}).slice(0,5);
+    if(!ms.length) return 0.5;
+    var w=ms.filter(function(p){var isA=p.jugadorA===id;return(isA?+p.juegosA:+p.juegosB)>=13;}).length;
+    return w/ms.length;
+  }
+  var fA=forma(idA), fB=forma(idB);
+  var rank=calcStats();
+  var stA=rank.find(function(x){return x.id===idA;})||{pts:0,pj:0};
+  var stB=rank.find(function(x){return x.id===idB;})||{pts:0,pj:0};
+  var ppA=stA.pj?stA.pts/stA.pj:5, ppB=stB.pj?stB.pts/stB.pj:5;
+  var total=ppA+ppB, rankA=total?ppA/total:0.5;
+  var sA=h2hScoreA*0.40+fA*0.35+rankA*0.25;
+  var sB=(1-h2hScoreA)*0.40+fB*0.35+(1-rankA)*0.25;
+  var t=sA+sB, pA=Math.round(sA/t*100), pB=100-pA;
+  return{favId:pA>=pB?idA:idB,pA:pA,pB:pB,h2h:h2hMs.length};
+}
+
 function calcVenganza(idA,idB){
   function rachaDerrota(atacante,defensor){
     var ms=partidos
@@ -630,8 +668,26 @@ function calcVenganza(idA,idB){
 function updatePreview(){
   var idA=document.getElementById("p-ja").value, idB=document.getElementById("p-jb").value;
   var jA=parseInt(document.getElementById("p-ga").value)||0, jB=parseInt(document.getElementById("p-gb").value)||0;
-  var el=document.getElementById("pvbox"), veng=document.getElementById("pveng");
-  if(!idA||!idB||idA===idB){el.style.display="none";veng.style.display="none";return;}
+  var el=document.getElementById("pvbox"), veng=document.getElementById("pveng"), pred=document.getElementById("pvpred");
+  if(!idA||!idB||idA===idB){el.style.display="none";veng.style.display="none";pred.style.display="none";return;}
+
+  var pr=predecirPartido(idA,idB);
+  pred.style.display="block";
+  var nA=getNombre(idA), nB=getNombre(idB);
+  pred.innerHTML='<div class="pvpred-title">🔮 El algoritmo predice</div>'
+    +'<div class="pvpred-row">'
+    +'<span class="pvpred-name">'+nA+'</span>'
+    +'<div class="pvpred-bar-wrap"><div class="pvpred-bar" style="width:'+pr.pA+'%"></div></div>'
+    +'<span class="pvpred-pct">'+pr.pA+'%</span>'
+    +(pr.favId===idA?'<span class="pvpred-fav">⭐ FAV</span>':'')
+    +'</div>'
+    +'<div class="pvpred-row">'
+    +'<span class="pvpred-name">'+nB+'</span>'
+    +'<div class="pvpred-bar-wrap"><div class="pvpred-bar" style="width:'+pr.pB+'%"></div></div>'
+    +'<span class="pvpred-pct">'+pr.pB+'%</span>'
+    +(pr.favId===idB?'<span class="pvpred-fav">⭐ FAV</span>':'')
+    +'</div>'
+    +'<div class="pvpred-footer">'+(pr.h2h>=2?'H2H ('+pr.h2h+' partidos) · ':'Sin H2H previo · ')+'Forma reciente · Ranking</div>';
 
   var v=calcVenganza(idA,idB);
   if(v){
@@ -768,6 +824,7 @@ function guardarPartido(){
     document.getElementById("p-ga").value=""; document.getElementById("p-gb").value="";
     document.getElementById("pvbox").style.display="none";
     document.getElementById("pveng").style.display="none";
+    document.getElementById("pvpred").style.display="none";
     toast("Partido guardado","ok"); showTab("pa");
   })
   .catch(function(e){toast("Error: "+(e.message||e),"error");})

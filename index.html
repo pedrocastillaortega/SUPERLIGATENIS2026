@@ -222,6 +222,22 @@ select option{background:#fff}
 .h2h-msep{font-size:13px;color:var(--dim);text-align:center}
 .h2h-mwin{font-size:13px;font-weight:500;color:var(--blue);text-align:right}
 
+/* TODAS LAS PREDICCIONES */
+.pred-section-title{font-size:11px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.8px;padding:14px 16px 8px;background:var(--bg)}
+.pred-card{background:var(--white);border-bottom:1px solid var(--divider);padding:14px 16px;cursor:pointer}
+.pred-card:active{background:#F5F5F5}
+.pred-top{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.pred-pname{font-size:13px;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pred-pname.r{text-align:right}
+.pred-vs-mid{font-size:11px;font-weight:700;color:var(--dim);padding:0 4px;flex-shrink:0}
+.pred-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.pred-bar-row:last-child{margin-bottom:0}
+.pred-bname{font-size:12px;color:var(--dim);width:72px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0}
+.pred-bwrap{flex:1;background:var(--divider);border-radius:4px;height:7px;overflow:hidden}
+.pred-bfill{height:7px;border-radius:4px;background:var(--blue);transition:width .5s ease}
+.pred-bpct{font-size:13px;font-weight:700;color:var(--fg);width:36px;text-align:right;flex-shrink:0}
+.pred-bfav{font-size:12px;width:16px;flex-shrink:0;text-align:center}
+
 /* MISC */
 .spin{width:20px;height:20px;border:2.5px solid rgba(183,28,28,.2);border-top-color:var(--red2);border-radius:50%;animation:sp .6s linear infinite;display:inline-block;vertical-align:middle;margin-right:10px}
 @keyframes sp{to{transform:rotate(360deg)}}
@@ -429,7 +445,7 @@ var _cbId=0;
 var fotoB64=null, fotoMime=null;
 var editFotoB64=null, editFotoMime=null, editingId=null;
 var perfilId=null;
-var HDR={pa:"PARTIDOS",cl:"CLASIFICACION",ju:"JUGADORES",np:"NUEVO PARTIDO",nj:"NUEVO JUGADOR",pe:"PERFIL",h2h:"CARA A CARA"};
+var HDR={pa:"PARTIDOS",cl:"CLASIFICACION",ju:"JUGADORES",np:"NUEVO PARTIDO",nj:"NUEVO JUGADOR",pe:"PERFIL",h2h:"PREDICTOR"};
 var TABS={pa:"sec-pa",cl:"sec-cl",ju:"sec-ju",np:"sec-np",nj:"sec-nj",pe:"sec-pe",h2h:"sec-h2h"};
 var AVCOLORS=["#B71C1C","#1565C0","#2E7D32","#F57F17","#6A1B9A","#00838F","#4E342E","#37474F"];
 
@@ -495,6 +511,7 @@ window.onload = function() {
   ["h2h-ja","h2h-jb"].forEach(function(id){
     document.getElementById(id).addEventListener("change", renderH2H);
   });
+  document.getElementById("nav-h2h").addEventListener("click", renderH2H);
 
   if (SCRIPT_URL) {
     document.getElementById("cfg-banner").classList.remove("show");
@@ -532,7 +549,7 @@ function calcStats() {
     .sort(function(a,b){return b.pts-a.pts||b.jg-a.jg;});
 }
 
-function renderAll(){renderPartidos();renderClasif();renderJugadores();renderAdminJ();renderSelects();updateStats();if(curTab==='h2h')renderH2H();}
+function renderAll(){renderPartidos();renderClasif();renderJugadores();renderAdminJ();renderSelects();updateStats();renderH2H();}
 
 function renderPartidos(){
   var el=document.getElementById("lista-pa");
@@ -958,12 +975,51 @@ function calcRacha(id){
   return {count:count,type:type};
 }
 
+function renderAllPredictions(){
+  var rank=calcStats();
+  if(rank.length<2) return '<div class="empty">Se necesitan al menos 2 jugadores</div>';
+  var html='<div class="pred-section-title">🔮 Predicciones — toca para ver el H2H detallado</div>';
+  for(var i=0;i<rank.length;i++){
+    for(var j=i+1;j<rank.length;j++){
+      var idA=rank[i].id, idB=rank[j].id;
+      var pr=predecirPartido(idA,idB);
+      var nA=getNombre(idA), nB=getNombre(idB);
+      html+='<div class="pred-card" onclick="selectH2H(\''+idA+'\',\''+idB+'\')">'
+        +'<div class="pred-top">'+avHTML(idA,26)
+        +'<span class="pred-pname">'+nA+'</span>'
+        +'<span class="pred-vs-mid">VS</span>'
+        +'<span class="pred-pname r">'+nB+'</span>'+avHTML(idB,26)
+        +'</div>'
+        +'<div class="pred-bar-row">'
+        +'<span class="pred-bname">'+nA+'</span>'
+        +'<div class="pred-bwrap"><div class="pred-bfill" style="width:'+pr.pA+'%"></div></div>'
+        +'<span class="pred-bpct">'+pr.pA+'%</span>'
+        +'<span class="pred-bfav">'+(pr.favId===idA?'⭐':'')+'</span>'
+        +'</div>'
+        +'<div class="pred-bar-row">'
+        +'<span class="pred-bname">'+nB+'</span>'
+        +'<div class="pred-bwrap"><div class="pred-bfill" style="width:'+pr.pB+'%"></div></div>'
+        +'<span class="pred-bpct">'+pr.pB+'%</span>'
+        +'<span class="pred-bfav">'+(pr.favId===idB?'⭐':'')+'</span>'
+        +'</div></div>';
+    }
+  }
+  return html;
+}
+
+function selectH2H(idA,idB){
+  document.getElementById('h2h-ja').value=idA;
+  document.getElementById('h2h-jb').value=idB;
+  renderH2H();
+  window.scrollTo(0,0);
+}
+
 function renderH2H(){
   var idA=document.getElementById('h2h-ja').value;
   var idB=document.getElementById('h2h-jb').value;
   var el=document.getElementById('h2h-output');
   if(!idA||!idB||idA===idB){
-    el.innerHTML='<div class="empty" style="padding-top:40px">Selecciona dos jugadores distintos</div>';
+    el.innerHTML=renderAllPredictions();
     return;
   }
   var jA=jugadores.find(function(x){return x.id===idA;});
@@ -1028,7 +1084,18 @@ function renderH2H(){
       +'</div>';
   });
 
+  html+='<div style="padding:16px;text-align:center">'
+    +'<button class="btn-text" style="font-size:13px;color:var(--dim)" onclick="clearH2H()">← Ver todas las predicciones</button>'
+    +'</div>';
+
   el.innerHTML=html;
+}
+
+function clearH2H(){
+  document.getElementById('h2h-ja').value='';
+  document.getElementById('h2h-jb').value='';
+  renderH2H();
+  window.scrollTo(0,0);
 }
 
 function calcInsignias(id){

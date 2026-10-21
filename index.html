@@ -100,6 +100,9 @@ select option{background:#fff}
 
 /* PREVIEW PARTIDO */
 .pvbox{background:#FFF3E0;border-left:4px solid #FF8F00;border-radius:0 8px 8px 0;padding:12px 14px;font-size:14px;color:#E65100;margin-bottom:16px;display:none;line-height:1.6}
+.pveng{background:linear-gradient(135deg,#B71C1C,#C62828);border-radius:10px;padding:16px;font-size:14px;color:#fff;margin-bottom:16px;display:none;text-align:center;line-height:1.7;box-shadow:0 4px 14px rgba(183,28,28,.4)}
+.pveng-title{font-size:20px;font-weight:700;letter-spacing:.5px;display:block;margin-bottom:4px}
+.pveng-sub{font-size:13px;opacity:.9}
 
 /* ADMIN LIST */
 .admin-list-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--divider);min-height:60px}
@@ -297,6 +300,7 @@ select option{background:#fff}
         <div class="field"><label>Juegos local</label><input type="number" id="p-ga" min="0" max="13" placeholder="0" inputmode="numeric"></div>
         <div class="field"><label>Juegos visitante</label><input type="number" id="p-gb" min="0" max="13" placeholder="0" inputmode="numeric"></div>
       </div>
+      <div class="pveng" id="pveng"></div>
       <div class="pvbox" id="pvbox"></div>
       <button class="btn-save" id="btn-gp" onclick="guardarPartido()">GUARDAR PARTIDO</button>
     </div>
@@ -604,11 +608,38 @@ function updateStats(){
   var r=calcStats(); document.getElementById("s3").textContent=r.length?r[0].nombre.split(" ")[0]:"-";
 }
 
+function calcVenganza(idA,idB){
+  function rachaDerrota(atacante,defensor){
+    var ms=partidos
+      .filter(function(p){return(p.jugadorA===atacante&&p.jugadorB===defensor)||(p.jugadorA===defensor&&p.jugadorB===atacante);})
+      .map(function(p){
+        var isA=p.jugadorA===atacante;
+        var myG=isA?+p.juegosA:+p.juegosB, rivG=isA?+p.juegosB:+p.juegosA;
+        return{fecha:p.fecha,lost:rivG>=13};
+      })
+      .sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha);});
+    if(!ms.length||!ms[0].lost) return 0;
+    var c=0; for(var i=0;i<ms.length;i++){if(ms[i].lost)c++;else break;} return c;
+  }
+  var sA=rachaDerrota(idA,idB), sB=rachaDerrota(idB,idA);
+  if(sA>=3) return{loser:idA,winner:idB,count:sA};
+  if(sB>=3) return{loser:idB,winner:idA,count:sB};
+  return null;
+}
+
 function updatePreview(){
   var idA=document.getElementById("p-ja").value, idB=document.getElementById("p-jb").value;
   var jA=parseInt(document.getElementById("p-ga").value)||0, jB=parseInt(document.getElementById("p-gb").value)||0;
-  var el=document.getElementById("pvbox");
-  if(!idA||!idB||idA===idB){el.style.display="none";return;}
+  var el=document.getElementById("pvbox"), veng=document.getElementById("pveng");
+  if(!idA||!idB||idA===idB){el.style.display="none";veng.style.display="none";return;}
+
+  var v=calcVenganza(idA,idB);
+  if(v){
+    veng.style.display="block";
+    veng.innerHTML='<span class="pveng-title">⚡ '+getNombre(v.loser).toUpperCase()+' BUSCA VENGANZA</span>'
+      +'<span class="pveng-sub">'+v.count+' derrotas seguidas contra '+getNombre(v.winner)+'</span>';
+  } else { veng.style.display="none"; }
+
   var tot=jA+jB; el.style.display="block";
   if(!tot){el.textContent=getNombre(idA)+" vs "+getNombre(idB);return;}
   var pA=(10*jA/tot).toFixed(2), pB=(10*jB/tot).toFixed(2);
@@ -736,6 +767,7 @@ function guardarPartido(){
     document.getElementById("p-ja").value=""; document.getElementById("p-jb").value="";
     document.getElementById("p-ga").value=""; document.getElementById("p-gb").value="";
     document.getElementById("pvbox").style.display="none";
+    document.getElementById("pveng").style.display="none";
     toast("Partido guardado","ok"); showTab("pa");
   })
   .catch(function(e){toast("Error: "+(e.message||e),"error");})
